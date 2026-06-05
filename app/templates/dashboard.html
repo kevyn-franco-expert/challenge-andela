@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watchdog — Observability Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="dashboard-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">Watch<span>dog</span></div>
+      <ul class="sidebar-nav">
+        <li><a href="#" class="active" data-tab="overview">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Overview
+        </a></li>
+        <li><a href="#" data-tab="ingest">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Ingest Logs
+        </a></li>
+        <li><a href="#" data-tab="anomalies">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Anomalies
+        </a></li>
+        <li><a href="#" data-tab="alerts">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Alerts
+        </a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="avatar">A</div>
+        <div class="sidebar-user-info">
+          <div class="name">Admin</div>
+          <div class="role">SRE Engineer</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <h1 class="header-title">Dashboard Overview</h1>
+        <div class="header-actions">
+          <span id="health-badge" class="status-indicator status-offline">Checking...</span>
+          <button class="btn btn-primary btn-sm" onclick="runDetection()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run Detection
+          </button>
+        </div>
+      </header>
+
+      <!-- Body -->
+      <div class="content-body">
+        <!-- KPI Cards -->
+        <div class="grid-4" style="margin-bottom: 24px;">
+          <div class="stat-card info">
+            <div class="stat-label">Logs Ingested</div>
+            <div class="stat-value" id="stat-logs">0</div>
+            <div class="stat-meta">
+              <span class="badge badge-secondary">Total</span>
+            </div>
+          </div>
+          <div class="stat-card warning">
+            <div class="stat-label">Open Anomalies</div>
+            <div class="stat-value" id="stat-open">0</div>
+            <div class="stat-meta">
+              <span class="badge badge-secondary">Requires attention</span>
+            </div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-label">Critical</div>
+            <div class="stat-value" id="stat-critical">0</div>
+            <div class="stat-meta">
+              <span class="badge badge-danger">High severity</span>
+            </div>
+          </div>
+          <div class="stat-card success">
+            <div class="stat-label">Alerts Sent</div>
+            <div class="stat-value" id="stat-alerts">0</div>
+            <div class="stat-meta">
+              <span class="badge badge-success">Delivered</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid-2" style="margin-bottom: 24px;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Anomaly Timeline</span>
+            </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="timelineChart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Severity Distribution</span>
+            </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="severityChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ingest Panel -->
+        <div class="card" id="panel-ingest" style="margin-bottom: 24px;">
+          <div class="card-header">
+            <span class="card-title">Ingest Logs</span>
+            <button class="btn btn-outline btn-sm" onclick="ingestLogs()">Ingest</button>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Log Format</label>
+              <select id="log-format" class="form-select">
+                <option value="auto">Auto-detect</option>
+                <option value="json">JSON</option>
+                <option value="syslog">Syslog</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Raw Log Lines</label>
+              <textarea id="log-input" class="form-control" rows="5" placeholder='{"timestamp":"2024-01-01T12:00:00Z","service":"api","level":"ERROR","message":"fail"}'></textarea>
+            </div>
+            <div id="ingest-feedback" style="font-size: 13px; color: #64748b;"></div>
+          </div>
+        </div>
+
+        <!-- Anomalies Table -->
+        <div class="card" id="panel-anomalies" style="margin-bottom: 24px;">
+          <div class="card-header">
+            <span class="card-title">Recent Anomalies</span>
+            <span id="anomaly-count" class="badge badge-secondary">0 records</span>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <table class="data-table" id="anomaly-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Severity</th>
+                  <th>Service</th>
+                  <th>Details</th>
+                  <th>Window</th>
+                  <th>Status</th>
+                  <th>Detected</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div id="anomaly-empty" class="empty-state">No anomalies detected yet. Run detection after ingesting logs.</div>
+          </div>
+        </div>
+
+        <!-- Alerts Panel -->
+        <div class="card" id="panel-alerts">
+          <div class="card-header">
+            <span class="card-title">Alert Management</span>
+          </div>
+          <div class="card-body">
+            <div class="grid-2">
+              <div>
+                <div class="form-group">
+                  <label class="form-label">Webhook URL</label>
+                  <input id="webhook-url" type="text" class="form-control" placeholder="https://example.com/webhook">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="addConfig()" style="margin-bottom: 16px;">Register Webhook</button>
+
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Registered Configs</h4>
+                <div id="config-list" style="font-size: 13px; color: #64748b;">
+                  No configs registered.
+                </div>
+
+                <div style="margin-top: 16px;">
+                  <button class="btn btn-outline btn-sm" onclick="triggerAlerts()">Trigger Alerts Now</button>
+                  <span id="trigger-feedback" style="margin-left: 12px; font-size: 13px; color: #64748b;"></span>
+                </div>
+              </div>
+              <div>
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Alert History</h4>
+                <table class="data-table" id="history-table">
+                  <thead>
+                    <tr><th>Status</th><th>Response</th><th>Time</th></tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+                <div id="history-empty" class="empty-state">No alert history yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

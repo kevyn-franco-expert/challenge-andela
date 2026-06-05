@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.env
+watchdog.db
+.pytest_cache/
+server.log
+server.pid
